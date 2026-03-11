@@ -24,8 +24,8 @@ def load_model():
         with open("gb_churn_model_fast.pkl", "rb") as f:
             obj = pickle.load(f)
     if isinstance(obj, dict):
-        return obj.get("model"), obj.get("threshold", 0.20)
-    return obj, 0.20
+        return obj.get("model"), 0.50
+    return obj, 0.50
 
 model, THRESHOLD = load_model()
 
