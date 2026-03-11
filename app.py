@@ -23,14 +23,20 @@ def load_model():
     except Exception:
         with open("gb_churn_model_fast.pkl", "rb") as f:
             obj = pickle.load(f)
-    if isinstance(obj, dict):
-        return obj.get("model", obj)
-    return obj
 
-model = load_model()
+    if isinstance(obj, dict):
+        model     = obj.get("model")
+        threshold = obj.get("threshold", 0.22)  # ดึง threshold จริงจาก pkl
+    else:
+        model     = obj
+        threshold = 0.22
+    return model, threshold
+
+model, THRESHOLD = load_model()
 
 st.title("📊 ระบบทำนายการยกเลิกบริการ (Churn Prediction)")
 st.markdown("กรอกข้อมูลลูกค้าด้านล่าง แล้วกด **ทำนาย** เพื่อดูความเสี่ยงการยกเลิกบริการ")
+st.caption(f"🎯 Decision threshold ของโมเดลนี้: **{THRESHOLD:.0%}** (ถ้า probability สูงกว่านี้ = เสี่ยง Churn)")
 st.divider()
 
 col1, col2, col3 = st.columns(3)
@@ -108,9 +114,8 @@ if predict_btn:
     }])
 
     try:
-        prediction = model.predict(input_data)[0]
-        probability = model.predict_proba(input_data)[0]
-        churn_prob = probability[1] if len(probability) > 1 else probability[0]
+        churn_prob  = model.predict_proba(input_data)[0][1]
+        prediction  = int(churn_prob >= THRESHOLD)  # ใช้ threshold จริงจาก model
 
         st.divider()
         res_col1, res_col2 = st.columns(2)
@@ -124,22 +129,23 @@ if predict_btn:
                 st.markdown("ลูกค้ารายนี้มีแนวโน้มที่จะ **ยังคงใช้บริการต่อไป**")
 
         with res_col2:
-            st.metric(
-                label="โอกาสยกเลิกบริการ",
-                value=f"{churn_prob:.1%}",
-                delta=f"{'ความเสี่ยงสูง' if churn_prob > 0.5 else 'ความเสี่ยงต่ำ'}",
-                delta_color="inverse",
-            )
+            if prediction == 1:
+                label = "⚠️ ความเสี่ยงสูง"
+            else:
+                label = "✅ ความเสี่ยงต่ำ"
+            st.metric(label="โอกาสยกเลิกบริการ", value=f"{churn_prob:.1%}", delta=label, delta_color="inverse")
 
         st.markdown("**ระดับความเสี่ยง**")
         st.progress(float(churn_prob))
 
-        if churn_prob < 0.3:
-            st.info("🟢 **ความเสี่ยงต่ำ** (< 30%) — ลูกค้ามีความพึงพอใจดี ควรรักษาความสัมพันธ์ต่อไป")
-        elif churn_prob < 0.6:
-            st.warning("🟡 **ความเสี่ยงปานกลาง** (30–60%) — ควรติดตามและหาวิธีเพิ่มความพึงพอใจ")
+        if churn_prob < 0.25:
+            st.info("🟢 **ความเสี่ยงต่ำ** — ลูกค้ามีความพึงพอใจดี ควรรักษาความสัมพันธ์ต่อไป")
+        elif churn_prob < 0.45:
+            st.warning("🟡 **ความเสี่ยงปานกลาง** — ควรติดตามและหาวิธีเพิ่มความพึงพอใจ")
         else:
-            st.error("🔴 **ความเสี่ยงสูง** (> 60%) — ต้องดำเนินการเชิงรุกทันที เพื่อป้องกันการยกเลิกบริการ")
+            st.error("🔴 **ความเสี่ยงสูง** — ต้องดำเนินการเชิงรุกทันที เพื่อป้องกันการยกเลิกบริการ")
+
+        st.caption(f"probability = {churn_prob:.4f} | threshold = {THRESHOLD:.2f}")
 
     except Exception as e:
         st.error(f"❌ เกิดข้อผิดพลาด: {e}")
