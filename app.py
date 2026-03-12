@@ -81,7 +81,8 @@ with col1:
                             ["basic", "standard", "premium", "enterprise"],
                             index=3,
                             help="แพ็กเกจสูง = ลงทุนมาก = ความเสี่ยงต่ำกว่า")
-
+    sub_churn_rate    = st.slider("อัตรา Subscription ที่ยกเลิก",
+                            min_value=0.0, max_value=1.0, value=0.05, step=0.01, format="%.0f%%")
     has_churn_history = st.selectbox("เคยยกเลิกบริการมาก่อน?",
                             [0, 1], format_func=lambda x: "เคย ⚠️" if x else "ไม่เคย ✅")
     n_churn_events    = st.number_input("จำนวนครั้งที่ยกเลิกบริการ",
